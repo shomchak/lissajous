@@ -15,4 +15,4 @@ class AnalyzerTests(TestCase):
         with open('tests/a220_data', 'rb') as f:
             data = f.read()
         self.a.load(data)
-        self.assertEqual(self.a.mid_peak, 215.33203125)
+        self.assertEqual(self.a.mid_peaks(1)[0], 215.33203125)

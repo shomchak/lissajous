@@ -16,22 +16,18 @@ class Analyzer(object):
         self._fft = None
 
     def load(self, bytes):
-        self._bytes = bytes
-        self._fft, self._freqs = self._calculate_fft(bytes)
+        self._signal = numpy.fromstring(bytes, self.dtype)
+        self._fft, self._freqs = self._calculate_fft(self._signal)
 
-    def _calculate_fft(self, bytes):
-        signal = numpy.fromstring(bytes, self.dtype)
+    def _calculate_fft(self, signal):
         fft = numpy.abs(numpy.fft.rfft(signal))
-
         n = len(signal)
         freqs = numpy.fft.fftfreq(n, self.sample_freq)[:n/2]
-
         return fft, freqs
 
-    def _calculate_freqs(self, bytes):
-        n = len(self._bytes)
-        freqs = numpy.fft.fftfreq(n, self.sample_freq)
-        return freqs[:n/2]
+    @property
+    def power(self):
+        return numpy.log(numpy.sum(self._fft)/len(self._fft)/1000)
 
     @property
     def freqs(self):
@@ -63,10 +59,9 @@ class Analyzer(object):
         lows, low_freqs = self.lows
         return low_freqs[numpy.argmax(lows)]
 
-    @property
-    def mid_peak(self):
+    def mid_peaks(self, n=1):
         mids, mid_freqs = self.mids
-        return mid_freqs[numpy.argmax(mids)]
+        return mid_freqs[numpy.argpartition(-mids, n)[:n]]
 
     @property
     def high_peak(self):
