@@ -17,7 +17,7 @@ class Analyzer(object):
         self._fft = None
 
     def load(self, bytes):
-        self._signal = np.fromstring(bytes, self.dtype)
+        self._signal = np.frombuffer(bytes, self.dtype)
         self._fft, self._freqs = self._calculate_fft(self._signal)
 
     def _calculate_fft(self, signal):
