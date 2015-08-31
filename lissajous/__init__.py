@@ -75,7 +75,7 @@ class Analyzer(object):
         lows, low_freqs = self.lows
         return low_freqs[np.argmax(lows)]
 
-    def mid_peaks(self, n=1):
+    def get_mid_peaks(self, n=1):
         mids, mid_freqs = self.mids
         return mid_freqs[np.argpartition(-mids, n)[:n]]
 
@@ -110,11 +110,21 @@ class AudioStream(object):
         self._stream.start_stream()
         return self
 
+    def read(self):
+        ''' On a buffer overflow this returns 0 bytes. '''
+        try:
+            return self._stream.read(self.chunk)
+        except IOError:
+            return ''
+        except AttributeError:
+            raise Exception('Must be used as a context manager.')
+
     def stream(self):
         try:
             while True:
-                bytes = self._stream.read(self.chunk)
-                self.handle(bytes)
+                bytes = self.read()
+                if bytes:
+                    self.handle(bytes)
         except (KeyboardInterrupt, SystemExit):
             pass
 

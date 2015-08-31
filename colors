@@ -1,0 +1,102 @@
+#! /usr/local/bin/python
+
+import pyglet
+import numpy as np
+from itertools import cycle
+
+import lissajous
+
+
+BLACK = 0.1
+WHITE = 0.9
+
+
+def linmap(d1, d2, r1, r2, v):
+    if v < d1:
+        v = d1
+    if v > d2:
+        v = d2
+
+    return (v - d1) * (r2 - r1) / (d2 - d1) + r1
+
+
+class Colors(object):
+
+    def __init__(self):
+        pyglet.clock.schedule(lambda _: 0)
+        self.window = pyglet.window.Window(fullscreen=False)
+        self.audio = lissajous.AudioStream(chunk=1024)
+        self.analyzer = lissajous.Analyzer(self.audio.sample_rate)
+        self._last_color = BLACK
+        self._asc = True
+        self._read_every = 2
+        self._read_count = 1
+        self._last_power = 0
+
+    def run(self):
+        with self.audio as stream:
+            osc = Oscillator(output_range=0.1)
+
+            def get_speed(bytes):
+                self.analyzer.load(bytes)
+                power = linmap(3.0, 6.0, 0.1, 0.8, self.analyzer.power)
+                log_freq = np.log(self.analyzer.get_mid_peaks(1)[0])
+                speed = linmap(4.0, 9.0, 5.0, 30.0, log_freq)
+                return speed, power
+
+            def handle():
+                bytes = stream.read()
+                if not bytes:
+                    return
+
+                if self._read_count == self._read_every:
+                    self._read_count = 1
+                    speed, power = get_speed(bytes)
+                    self._last_power = power
+                    osc.set_speed(speed)
+                else:
+                    self._read_count += 1
+
+                color = self._last_power + osc.next_point
+                # print color
+                # color = osc.next_point
+                self.set_color(color)
+
+            self.window.on_draw = handle
+            pyglet.app.run()
+
+    def set_color(self, r, g=None, b=None):
+        if g is None:
+            g = r
+        if b is None:
+            b = r
+
+        pyglet.gl.glClearColor(r, g, b, 0)
+        self.window.clear()
+
+
+class Oscillator(object):
+
+    def __init__(self, output_range=1.0):
+        self.range = output_range
+        self._last_point = (0, 0.5)
+        self._speed = 1.0
+        self.set_speed()
+
+    def set_speed(self, speed=1.0):
+        frac = self._speed / speed
+        start = self._last_point[0] * frac
+        self._speed = speed
+        self._angles = np.linspace(start, start + (2 * np.pi), 100)
+        self._values = (np.sin(speed * self._angles) * self.range / 2)
+        self.points = cycle(zip(self._angles, self._values))
+        self.points.next()
+
+    @property
+    def next_point(self):
+        self._last_point = self.points.next()
+        return self._last_point[1]
+
+
+if __name__ == '__main__':
+    Colors().run()
