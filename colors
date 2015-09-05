@@ -24,7 +24,10 @@ class Colors(object):
 
     def __init__(self):
         pyglet.clock.schedule(lambda _: 0)
-        self.window = pyglet.window.Window(fullscreen=False)
+        p = pyglet.window.get_platform()
+        screen = p.get_default_display().get_screens()[1]
+        print screen
+        self.window = pyglet.window.Window(fullscreen=True, screen=screen)
         self.audio = lissajous.AudioStream(chunk=1024)
         self.analyzer = lissajous.Analyzer(self.audio.sample_rate)
         self._last_color = BLACK
@@ -39,7 +42,7 @@ class Colors(object):
 
             def get_speed(bytes):
                 self.analyzer.load(bytes)
-                power = linmap(3.0, 6.0, 0.1, 0.8, self.analyzer.power)
+                power = linmap(3.0, 6.0, 0.0, 0.8, self.analyzer.power)
                 log_freq = np.log(self.analyzer.get_mid_peaks(1)[0])
                 speed = linmap(4.0, 9.0, 5.0, 30.0, log_freq)
                 return speed, power
@@ -52,15 +55,23 @@ class Colors(object):
                 if self._read_count == self._read_every:
                     self._read_count = 1
                     speed, power = get_speed(bytes)
-                    self._last_power = power
+                    print speed, power
+
+                    if power < self._last_power:
+                        # self._last_power = (self._last_power + power) / 2.0
+                        self._last_power = power
+                    else:
+                        self._last_power = power
                     osc.set_speed(speed)
                 else:
                     self._read_count += 1
 
+                np = osc.next_point + 0.1
+                # np = 0
                 color = self._last_power + osc.next_point
                 # print color
                 # color = osc.next_point
-                self.set_color(color)
+                self.set_color(0, color, color)
 
             self.window.on_draw = handle
             pyglet.app.run()
